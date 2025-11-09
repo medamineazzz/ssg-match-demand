@@ -15,7 +15,7 @@ from datetime import date
 st.set_page_config(page_title="SSG vs Match Demand", page_icon="⚽", layout="wide")
 
 # Display Catapult logo at the top (make sure 'catapult_logo.png' is in your repo)
-st.image("catapult_logo.png", width=180)
+st.image("logo.png", width=180)
 
 # Global CSS (clean cards, pills, chips)
 st.markdown(
