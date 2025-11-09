@@ -247,3 +247,7 @@ function Chip({ label, value }: { label: string; value?: number }) {
     </div>
   );
 }
+git add .
+git commit -m "delete file"
+git push
+
