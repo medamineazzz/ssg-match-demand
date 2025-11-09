@@ -127,6 +127,3 @@ with quick_tab:
             st.markdown(f"<div class='{color}' style='border-radius:10px;padding:6px;text-align:center'><b>{label}</b><br>{fmt_pct(val)}</div>", unsafe_allow_html=True)
 
     st.caption("Legend: Under <80% · On-Target 80–100% · Over >100%")
-
-pip install streamlit
-streamlit run app.py
