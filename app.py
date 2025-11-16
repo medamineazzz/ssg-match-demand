@@ -1,12 +1,8 @@
 # app.py
 # -------------------------------------------------------------
-# SSG vs Match Demand — Simple Coach Tool (Streamlit)
-# Design-focused edition + Catapult Logo + Green Pitch Visualization
+# SSG vs Match Demand — Streamlined Coach Tool (NO pitch viz)
+# Catapult-style dark theme + Planner + Expected Demand + Quick %MDP
 # -------------------------------------------------------------
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Circle, Arc
-import numpy as np
 
 from typing import Optional, Dict
 import streamlit as st
@@ -15,14 +11,14 @@ from datetime import date
 # --------------------------- Page Setup ---------------------------
 st.set_page_config(page_title="SSG vs Match Demand", page_icon="⚽", layout="wide")
 
-# Display Catapult logo (make sure PNG exists in repo root)
+# Display Catapult logo
 st.image("CAT_horizontal_logo_lockup_white.png", width=180)
 
 # --------------------------- Global CSS ---------------------------
 st.markdown(
     """
     <style>
-      body { background-color: #0b1120; }  /* dark navy background */
+      body { background-color: #0b1120; }
       .ssg-card { border:1px solid #1f2937; border-radius:16px; padding:18px; background:#020617; }
       .ssg-kpi { border:1px solid #111827; border-radius:14px; padding:12px; text-align:center; background:#020617; }
       .ssg-kpi .label { font-size:12px; color:#9ca3af; }
@@ -30,10 +26,9 @@ st.markdown(
       .ssg-pill { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #111827; border-radius:12px; padding:8px 10px; background:#020617; }
       .ssg-pill .l { font-size:12px; color:#9ca3af; }
       .ssg-pill .r { font-size:13px; font-weight:700; border-radius:8px; padding:2px 8px; }
-      .ssg-chip { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; padding:10px 12px; text-align:center; min-height:68px; background:#020617; }
+      .ssg-chip { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; padding:10px 12px; min-height:68px; background:#020617; }
       .ssg-chip .t { font-size:11px; opacity:.7; color:#9ca3af; }
       .ssg-chip .v { font-weight:800; font-size:16px; color:#f9fafb; }
-      .ssg-shadow { box-shadow:0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.7); }
       .stTabs [role="tab"] { background:#020617; color:#9ca3af; border-radius:999px; padding:6px 16px; }
       .stTabs [role="tab"][aria-selected="true"] { background:#111827; color:#f9fafb; }
     </style>
@@ -41,13 +36,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --------------------------- Palette Helpers ---------------------------
+# --------------------------- Color Logic ---------------------------
 DEFAULT_COLORS = {
-    "under": "#F97373",      # light red
+    "under": "#F97373",
     "under_text": "#FEE2E2",
-    "on": "#22C55E",         # green
+    "on": "#22C55E",
     "on_text": "#DCFCE7",
-    "over": "#F97316",       # orange
+    "over": "#F97316",
     "over_text": "#FFEDD5",
 }
 
@@ -60,28 +55,21 @@ def style_for_pct(v: Optional[float], colors: dict) -> str:
         return f"background:{colors['on']};color:#022c22;"
     return f"background:{colors['over']};color:#7c2d12;"
 
-# --------------------------- Logic ---------------------------
-def fmt_pct(v: Optional[float]) -> str:
-    if v is None:
-        return "-"
-    try:
-        return f"{v * 100:.0f}%"
-    except Exception:
-        return "-"
-
+# --------------------------- Expected Demand Logic ---------------------------
 def expected_demand(app: Optional[float]) -> Dict[str, str]:
     if not app:
         return {k: "" for k in ["TD", "HSR", "SPRINT", "ACC", "DEC", "PL"]}
-    small = app < 85
-    medium = 85 <= app <= 120
-    return {
-        "TD": "MED" if (small or medium) else "HIGH",
-        "HSR": "LOW" if small else ("MED" if medium else "HIGH"),
-        "SPRINT": "LOW" if small else ("MED" if medium else "HIGH"),
-        "ACC": "HIGH" if small else ("MED" if medium else "LOW"),
-        "DEC": "HIGH" if small else ("MED" if medium else "LOW"),
-        "PL": "HIGH" if small else ("MED" if medium else "LOW"),
-    }
+
+    if app < 85:
+        return {"TD":"MED","HSR":"LOW","SPRINT":"LOW","ACC":"HIGH","DEC":"HIGH","PL":"HIGH"}
+    elif app <= 120:
+        return {"TD":"MED","HSR":"MED","SPRINT":"MED","ACC":"MED","DEC":"MED","PL":"MED"}
+    else:
+        return {"TD":"HIGH","HSR":"HIGH","SPRINT":"HIGH","ACC":"LOW","DEC":"LOW","PL":"LOW"}
+
+def fmt_pct(v):
+    if v is None: return "-"
+    return f"{v*100:.0f}%"
 
 # --------------------------- Sidebar ---------------------------
 with st.sidebar:
@@ -96,15 +84,15 @@ with st.sidebar:
 
     colors = {
         "under": under,
-        "under_text": DEFAULT_COLORS["under_text"],
         "on": on,
-        "on_text": DEFAULT_COLORS["on_text"],
         "over": over,
+        "under_text": DEFAULT_COLORS["under_text"],
+        "on_text": DEFAULT_COLORS["on_text"],
         "over_text": DEFAULT_COLORS["over_text"],
         "accent": accent,
     }
 
-# --------------------------- Catapult-style Header ---------------------------
+# --------------------------- Header ---------------------------
 st.markdown(
     """
 <div style="
@@ -114,8 +102,8 @@ st.markdown(
     margin-top:10px;
     margin-bottom:10px;
     border:1px solid #111827;">
-  <div style="font-size:26px;font-weight:800;color:#F9FAFB;display:flex;align-items:center;gap:8px;">
-    <span>SSG vs Match Demand</span>
+  <div style="font-size:26px;font-weight:800;color:#F9FAFB;">
+    SSG vs Match Demand
   </div>
   <div style="color:#9CA3AF;margin-top:4px;font-size:13px;">
     Catapult-style SSG planner to link training design with match demands.
@@ -131,222 +119,108 @@ planner_tab, quick_tab = st.tabs(["🗺️ Planner", "⚡ Quick %MDP"])
 # ========================== PLANNER TAB ==========================
 with planner_tab:
     st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
-    st.subheader("Planner", anchor="planner")
+    st.subheader("Planner")
 
-    # ---- Inputs ----
+    # Inputs
     colA, colB, colC = st.columns(3)
     with colA:
         _date = st.date_input("Date", value=date.today())
-        format_ = st.selectbox("Format", ["4v4", "6v6", "7v7", "8v8", "10v10"])
-        players = st.number_input("Players on Pitch (exclude GK)", min_value=2, max_value=22, value=8)
+        format_ = st.selectbox("Format", ["4v4","6v6","7v7","8v8","10v10"])
+        players = st.number_input("Players", 2, 22, 8)
     with colB:
-        length = st.number_input("Pitch Length (m)", min_value=10, max_value=120, value=30)
-        width = st.number_input("Pitch Width (m)", min_value=10, max_value=90, value=40)
-        sets = st.number_input("Sets", min_value=1, max_value=12, value=3)
+        length = st.number_input("Length (m)", 10, 120, 30)
+        width = st.number_input("Width (m)", 10, 90, 40)
+        sets = st.number_input("Sets", 1, 12, 3)
     with colC:
-        work = st.number_input("Work per Set (min)", min_value=1, max_value=30, value=3)
-        rest = st.number_input("Rest between Sets (sec)", min_value=15, max_value=300, value=90)
+        work = st.number_input("Work per set (min)", 1, 30, 3)
+        rest = st.number_input("Rest (sec)", 15, 300, 90)
 
-    # ---- Calculations ----
+    # Calculations
     area = length * width
-    app = area / players if players else 0.0
+    app = area / players
     total_work = sets * work
     total_rest = (sets * rest) / 60
-    total_session = total_work + total_rest
+    total_time = total_work + total_rest
 
-    # ---- KPI Cards ----
+    # KPIs
     k1, k2, k3, k4, k5 = st.columns(5)
-    labels = [
-        "Pitch Area (m²)",
-        "Area/Player (m²)",
-        "Total Work (min)",
-        "Total Rest (min)",
-        "Session (min)",
-    ]
-    values = [
-        f"{area:.0f}",
-        f"{app:.1f}",
-        f"{total_work:.0f}",
-        f"{total_rest:.0f}",
-        f"{total_session:.0f}",
-    ]
-    for col, label, value in zip([k1, k2, k3, k4, k5], labels, values):
-        with col:
-            st.markdown(
-                f"""
-                <div class='ssg-kpi'>
-                  <div class='label'>{label}</div>
-                  <div class='value'>{value}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    labels = ["Area (m²)", "APP (m²)", "Work (min)", "Rest (min)", "Total (min)"]
+    values = [f"{area:.0f}", f"{app:.0f}", f"{total_work:.0f}", f"{total_rest:.0f}", f"{total_time:.0f}"]
 
-    # ---- Expected Demand ----
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    st.markdown("**Expected Demand (from APP)**")
+    for col, label, val in zip([k1,k2,k3,k4,k5], labels, values):
+        col.markdown(
+            f"""
+            <div class='ssg-kpi'>
+              <div class='label'>{label}</div>
+              <div class='value'>{val}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # Expected Demand
+    st.markdown("### Expected Demand")
     exp = expected_demand(app)
 
-    t1, t2, t3, t4, t5, t6 = st.columns(6)
+    t1,t2,t3,t4,t5,t6 = st.columns(6)
     tags = [
-        ("TD", exp["TD"]),
-        ("HSR", exp["HSR"]),
-        ("Sprints", exp["SPRINT"]),
-        ("ACC", exp["ACC"]),
-        ("DEC", exp["DEC"]),
-        ("PL/min", exp["PL"]),
+        ("TD",exp["TD"]),
+        ("HSR",exp["HSR"]),
+        ("Sprint",exp["SPRINT"]),
+        ("ACC",exp["ACC"]),
+        ("DEC",exp["DEC"]),
+        ("PL",exp["PL"])
     ]
-    for (label, val), col in zip(tags, [t1, t2, t3, t4, t5, t6]):
-        if val == "HIGH":
-            tone = f"background:{colors['over']};color:#111827;"
-        elif val == "MED":
-            tone = "background:#111827;color:#E5E7EB;"
-        elif val == "LOW":
-            tone = "background:#1D4ED8;color:#DBEAFE;"
-        else:
-            tone = "background:#111827;color:#6B7280;"
 
-        with col:
-            st.markdown(
-                f"""
-                <div class='ssg-pill'>
-                  <span class='l'>{label}</span>
-                  <span class='r' style="{tone}">{val}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    for (label,val),col in zip(tags,[t1,t2,t3,t4,t5,t6]):
+        col.markdown(
+            f"""
+            <div class='ssg-pill'>
+                <span class='l'>{label}</span>
+                <span class='r'>{val}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-    st.caption("APP guide: Small <85 → higher ACC/DEC & PL · Medium 85–120 → balanced · Large >120 → more HSR & sprints")
-
-# ---- Session Summary ----
+    # Summary
     summary = (
         f"{format_} | {length}×{width}m | {players} players | "
-        f"{sets}×{work}′ work / {rest}s rest | APP {app:.0f} m² | "
-        f"Expected → TD: {exp['TD']} · HSR: {exp['HSR']} · ACC: {exp['ACC']}"
+        f"{sets}×{work}′ / {rest}s | APP {app:.0f} m² | "
+        f"TD {exp['TD']} · HSR {exp['HSR']} · ACC {exp['ACC']}"
     )
     st.text_area("Copy summary", summary, height=70)
 
-# ---- Pitch Visualization (compact & Catapult-styled) ----
-st.markdown("<hr>", unsafe_allow_html=True)
-st.subheader("🏟️ Pitch Visualization")
-
-# Ultra-compact figure size
-fig_ratio = (width / length) if length else 1.0
-fig_w = 1.8
-fig_h = max(1.0, fig_w * fig_ratio)
-
-fig, ax = plt.subplots(figsize=(fig_w, fig_h))
-
-# Pitch constants
-pen_depth = 16.5
-pen_width = 40.32
-goal_depth = 5.5
-goal_width = 18.32
-spot_dist = 11
-center_circle_r = 9.15
-
-# Dark green pitch
-ax.add_patch(
-    Rectangle(
-        (0, 0),
-        length,
-        width,
-        facecolor="#065f46",     # dark green
-        edgecolor="#d1d5db",      # soft white/gray outline
-        lw=1,
-    )
-)
-
-# Halfway line
-ax.plot(
-    [length / 2, length / 2],
-    [0, width],
-    color="#e5e7eb",
-    lw=0.8,
-)
-
-# Center circle + spot
-cc_r = min(center_circle_r, length / 3, width / 3)
-ax.add_patch(
-    Circle(
-        (length / 2, width / 2),
-        cc_r,
-        fill=False,
-        lw=0.7,
-        color="#e5e7eb",
-    )
-)
-ax.scatter(length / 2, width / 2, s=8, color="#e5e7eb")
-
-# Players — very small, UI-friendly
-n = int(players)
-if n >= 1:
-    per_row = min(6, max(2, int(np.ceil(n / 2))))
-    rows = int(np.ceil(n / per_row))
-    xs = np.linspace(length * 0.1, length * 0.9, per_row)
-    ys = np.linspace(width * 0.25, width * 0.75, rows)
-    pts = np.array([(x, y) for y in ys for x in xs])[:n]
-
-    half = n // 2
-    ax.scatter(pts[:half, 0], pts[:half, 1], s=90, color="#1f2937")    # Team A dark grey
-    ax.scatter(pts[half:, 0], pts[half:, 1], s=90, color="#f97316")    # Catapult orange
-
-    for i, (x, y) in enumerate(pts, start=1):
-        ax.text(
-            x, y, str(i),
-            color="white",
-            fontsize=6,
-            ha="center",
-            va="center",
-            weight="bold"
-        )
-
-# Final layout
-ax.set_xlim(0, length)
-ax.set_ylim(0, width)
-ax.set_aspect("equal")
-ax.set_xticks([])
-ax.set_yticks([])
-
-ax.set_title(
-    f"{length}m × {width}m — {players} players — APP {app:.0f}",
-    fontsize=8,
-    color="#d1d5db",
-    pad=2,
-)
-
-st.pyplot(fig)
-st.caption("Compact pitch view — scaled, dark-themed, UI-aligned.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ========================== QUICK %MDP TAB ==========================
 with quick_tab:
     st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
-    st.subheader("Quick % of Match (single player / block)")
+    st.subheader("Quick % of Match")
 
     left, right = st.columns(2)
     with left:
-        st.markdown("**Match MDP — per minute**")
-        mdp_td = st.number_input("TD/min (m)", value=180.0)
-        mdp_hmld = st.number_input("HMLD/min (m)", value=30.0)
-        mdp_acc = st.number_input("ACC/min (count)", value=0.9)
-        mdp_dec = st.number_input("DEC/min (count)", value=0.8)
-        mdp_hsr = st.number_input("HSR/min (m)", value=3.5)
-        mdp_pl = st.number_input("PlayerLoad/min", value=12.0)
+        st.markdown("**Match MDP (per min)**")
+        mdp_td = st.number_input("TD/min", 0.0, 400.0, 180.0)
+        mdp_hmld = st.number_input("HMLD/min", 0.0, 100.0, 30.0)
+        mdp_acc = st.number_input("ACC/min", 0.0, 5.0, 0.9)
+        mdp_dec = st.number_input("DEC/min", 0.0, 5.0, 0.8)
+        mdp_hsr = st.number_input("HSR/min", 0.0, 20.0, 3.5)
+        mdp_pl = st.number_input("PL/min", 0.0, 30.0, 12.0)
 
     with right:
-        st.markdown("**SSG Block — per minute**")
-        ssg_td = st.number_input("TD/min (m) ", value=165.0)
-        ssg_hmld = st.number_input("HMLD/min (m) ", value=28.0)
-        ssg_acc = st.number_input("ACC/min (count) ", value=1.1)
-        ssg_dec = st.number_input("DEC/min (count) ", value=1.0)
-        ssg_hsr = st.number_input("HSR/min (m) ", value=1.8)
-        ssg_pl = st.number_input("PlayerLoad/min ", value=13.0)
+        st.markdown("**SSG Block (per min)**")
+        ssg_td = st.number_input("TD/min ", value=165.0)
+        ssg_hmld = st.number_input("HMLD/min ", value=28.0)
+        ssg_acc = st.number_input("ACC/min ", value=1.1)
+        ssg_dec = st.number_input("DEC/min ", value=1.0)
+        ssg_hsr = st.number_input("HSR/min ", value=1.8)
+        ssg_pl = st.number_input("PL/min ", value=13.0)
 
     def pct(num, den):
         try:
             return num / den if den else None
-        except Exception:
+        except:
             return None
 
     metrics = [
@@ -358,23 +232,19 @@ with quick_tab:
         ("PL", pct(ssg_pl, mdp_pl)),
     ]
 
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    for (label, val), col in zip(metrics, [c1, c2, c3, c4, c5, c6]):
+    cols = st.columns(6)
+    for (label, val), col in zip(metrics, cols):
         style = style_for_pct(val, colors)
-        with col:
-            col.markdown(
-                f"""
-                <div class='ssg-chip ssg-shadow' style="{style}">
-                  <div class='t'>{label} %MDP</div>
-                  <div class='v'>{fmt_pct(val)}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            prog = 0.0
-            if val is not None:
-                prog = max(0.0, min(1.2, val))
-            col.progress(min(1.0, prog))
+        col.markdown(
+            f"""
+            <div class='ssg-chip ssg-shadow' style="{style}">
+              <div class='t'>{label}</div>
+              <div class='v'>{fmt_pct(val)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        col.progress(min(1.0, max(0.0, val if val else 0.0)))
 
-    st.caption("Legend: Under <80% · On-target 80–100% · Overload >100%")
+    st.caption("Legend: <80% Under · 80–100% On Target · >100% Overload")
     st.markdown("</div>", unsafe_allow_html=True)
