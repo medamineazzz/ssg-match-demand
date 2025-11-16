@@ -151,3 +151,158 @@ with planner_tab:
     values = [f"{area:.0f}", f"{app:.1f}", f"{total_work:.0f}", f"{total_rest:.0f}", f"{total_session:.0f}"]
     for col, label, value in zip([k1, k2, k3, k4, k5], labels, values):
         with col:
+            st.markdown(
+                f"<div class='ssg-kpi'><div class='label'>{label}</div><div class='value'>{value}</div></div>",
+                unsafe_allow_html=True,
+            )
+
+    # ---- Expected Demand ----
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    st.markdown("**Expected Demand (from APP)**")
+    exp = expected_demand(app)
+
+    t1, t2, t3, t4, t5, t6 = st.columns(6)
+    tags = [
+        ("TD", exp["TD"]),
+        ("HSR", exp["HSR"]),
+        ("Sprints", exp["SPRINT"]),
+        ("ACC", exp["ACC"]),
+        ("DEC", exp["DEC"]),
+        ("PL/min", exp["PL"]),
+    ]
+    for (label, val), col in zip(tags, [t1, t2, t3, t4, t5, t6]):
+        tone = (
+            "background:#E5E7EB;color:#111827;" if val == "MED"
+            else (f"background:{DEFAULT_COLORS['over']};color:{DEFAULT_COLORS['over_text']};"
+                  if val == "HIGH"
+                  else f"background:#DBEAFE;color:#1E40AF;")
+        )
+        with col:
+            st.markdown(
+                f"<div class='ssg-pill'><span class='l'>{label}</span>"
+                f"<span class='r' style='{tone}'>{val or ''}</span></div>",
+                unsafe_allow_html=True,
+            )
+
+    st.caption("APP guide: Small <85 → high ACC/DEC & PL · Medium 85–120 → balanced · Large >120 → more HSR & sprints")
+
+    # ---- Session Summary ----
+    summary = (
+        f"{format_} | {length}×{width}m | {players} players | "
+        f"{sets}×{work}′ work / {rest}s rest | APP {app:.0f} m² | "
+        f"Expected: TD {exp['TD']} · HSR {exp['HSR']} · ACC {exp['ACC']}"
+    )
+    st.text_area("Copy summary", summary, height=80)
+
+    # ---- Pitch Visualization ----
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.subheader("📏 Pitch Visualization")
+
+    # Figure proportions (avoid division by zero)
+    fig_ratio = (width / length) if length else 1
+    fig_w = 8
+    fig_h = max(4, fig_w * fig_ratio)
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    # Outer pitch
+    ax.add_patch(Rectangle((0, 0), length, width, fill=False, lw=2, color="#111827"))
+
+    # Halfway line
+    ax.plot([length / 2, length / 2], [0, width], color="#9ca3af", linestyle="--", lw=1)
+
+    # 5m grid
+    for x in range(5, int(length), 5):
+        ax.plot([x, x], [0, width], color="#e5e7eb", lw=0.5)
+    for y in range(5, int(width), 5):
+        ax.plot([0, length], [y, y], color="#e5e7eb", lw=0.5)
+
+    # Center circle (5 m radius)
+    ax.add_patch(Circle((length / 2, width / 2), 5, fill=False, lw=1, color="#9ca3af"))
+
+    # Players (auto layout, numbered)
+    n_players = int(players)
+    if n_players >= 2:
+        per_row = min(6, max(2, int(np.ceil(n_players / 2))))
+        rows = int(np.ceil(n_players / per_row))
+        xs = np.linspace(length * 0.1, length * 0.9, per_row)
+        ys = np.linspace(width * 0.2, width * 0.8, rows)
+        pts = np.array([(x, y) for y in ys for x in xs])[:n_players]
+
+        half = n_players // 2
+        ax.scatter(pts[:half, 0], pts[:half, 1], s=200, color="#111827", label="Team A", zorder=3)
+        ax.scatter(pts[half:, 0], pts[half:, 1], s=200, color="#FF8A00", label="Team B", zorder=3)
+
+        for i, (x, y) in enumerate(pts, start=1):
+            ax.text(x, y, str(i), color="white", ha="center", va="center", fontsize=9, weight="bold")
+
+        ax.legend(loc="upper right", fontsize=8, frameon=False)
+
+    ax.set_xlim(0, length)
+    ax.set_ylim(0, width)
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title(
+        f"{int(length)}m × {int(width)}m | {n_players} players | APP: {app:.0f} m²/player",
+        fontsize=12,
+        pad=12,
+    )
+
+    st.pyplot(fig)
+    st.caption("Pitch drawn to scale with 5 m grid. Players are auto-placed and numbered.")
+
+    st.markdown("</div>", unsafe_allow_html=True)  # close card
+
+# ========================== QUICK %MDP TAB ==========================
+with quick_tab:
+    st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
+    st.subheader("Quick % of Match (single player / block)")
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Match MDP — per minute**")
+        mdp_td = st.number_input("TD/min (m)", value=180.0)
+        mdp_hmld = st.number_input("HMLD/min (m)", value=30.0)
+        mdp_acc = st.number_input("ACC/min (count)", value=0.9)
+        mdp_dec = st.number_input("DEC/min (count)", value=0.8)
+        mdp_hsr = st.number_input("HSR/min (m)", value=3.5)
+        mdp_pl = st.number_input("PlayerLoad/min", value=12.0)
+    with right:
+        st.markdown("**SSG Block — per minute**")
+        ssg_td = st.number_input("TD/min (m) ", value=165.0)
+        ssg_hmld = st.number_input("HMLD/min (m) ", value=28.0)
+        ssg_acc = st.number_input("ACC/min (count) ", value=1.1)
+        ssg_dec = st.number_input("DEC/min (count) ", value=1.0)
+        ssg_hsr = st.number_input("HSR/min (m) ", value=1.8)
+        ssg_pl = st.number_input("PlayerLoad/min ", value=13.0)
+
+    def pct(num, den):
+        try:
+            return num / den if den else None
+        except Exception:
+            return None
+
+    metrics = [
+        ("TD", pct(ssg_td, mdp_td)),
+        ("HMLD", pct(ssg_hmld, mdp_hmld)),
+        ("ACC", pct(ssg_acc, mdp_acc)),
+        ("DEC", pct(ssg_dec, mdp_dec)),
+        ("HSR", pct(ssg_hsr, mdp_hsr)),
+        ("PL", pct(ssg_pl, mdp_pl)),
+    ]
+
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    for (label, val), col in zip(metrics, [c1, c2, c3, c4, c5, c6]):
+        style = style_for_pct(val, colors)
+        with col:
+            st.markdown(
+                f"<div class='ssg-chip ssg-shadow' style='{style}'>"
+                f"<div class='t'>{label} %MDP</div><div class='v'>{fmt_pct(val)}</div></div>",
+                unsafe_allow_html=True,
+            )
+            prog = 0 if val is None else max(0, min(1.2, val))
+            st.progress(min(1.0, prog))
+
+    st.caption("Legend: Under <80% · On-Target 80–100% · Over >100%")
+    st.markdown("</div>", unsafe_allow_html=True)
