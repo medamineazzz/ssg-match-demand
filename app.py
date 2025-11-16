@@ -317,7 +317,7 @@ ax.set_title(
 )
 
 st.pyplot(fig)
-st.caption("Compact pitch view — scaled, dark-themed, UI-aligned."
+st.caption("Compact pitch view — scaled, dark-themed, UI-aligned.")
 
 # ========================== QUICK %MDP TAB ==========================
 with quick_tab:
