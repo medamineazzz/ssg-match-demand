@@ -1,11 +1,15 @@
 # app.py
 # -------------------------------------------------------------
 # SSG vs Match Demand — Simple Coach Tool (Streamlit)
-# Design-focused edition + Catapult Logo integration
+# Design-focused edition + Catapult Logo + Pitch Visualization
 # Tabs:
-# 1) Planner → APP + Expected Demand (pills)
+# 1) Planner → APP + Expected Demand (pills) + Pitch viz
 # 2) Quick %MDP → % of match with colored chips + progress bars
 # -------------------------------------------------------------
+
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Circle
+import numpy as np
 
 from typing import Optional, Dict
 import streamlit as st
@@ -14,7 +18,7 @@ from datetime import date
 # --------------------------- Page Setup ---------------------------
 st.set_page_config(page_title="SSG vs Match Demand", page_icon="⚽", layout="wide")
 
-# Display Catapult logo at the top (make sure 'catapult_logo.png' is in your repo)
+# Display Catapult logo at the top (make sure this file is in your repo)
 st.image("CAT_horizontal_logo_lockup_white.png", width=180)
 
 # Global CSS (clean cards, pills, chips)
@@ -100,21 +104,27 @@ with st.sidebar:
     }
 
 # --------------------------- Header ---------------------------
-st.markdown(f"""
+st.markdown(
+    f"""
 <div class='ssg-card ssg-shadow' style='margin-top:10px;'>
   <div style='font-size:28px;font-weight:800;color:{colors['accent']}'>SSG vs Match Demand</div>
-  <div style='color:#6b7280;margin-top:4px'>Plan SSGs, estimate expected demand, and compare against match peaks.</div>
+  <div style='color:#6b7280;margin-top:4px'>
+    Plan SSGs, estimate expected demand, and compare against match peaks.
+  </div>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # --------------------------- Tabs ---------------------------
 planner_tab, quick_tab = st.tabs(["🗺️ Planner", "⚡ Quick %MDP"])
 
-# ---------- PLANNER ----------
+# ========================== PLANNER TAB ==========================
 with planner_tab:
     st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
     st.subheader("Planner")
 
+    # ---- Inputs ----
     colA, colB, colC = st.columns(3)
     with colA:
         _date = st.date_input("Date", value=date.today())
@@ -128,76 +138,16 @@ with planner_tab:
         work = st.number_input("Work per Set (min)", min_value=1, max_value=30, value=3)
         rest = st.number_input("Rest between Sets (sec)", min_value=15, max_value=300, value=90)
 
+    # ---- Calculations ----
     area = length * width
     app = (area / players) if players else 0
     total_work = sets * work
     total_rest = (sets * rest) / 60
     total_session = total_work + total_rest
 
+    # ---- KPI Cards ----
     k1, k2, k3, k4, k5 = st.columns(5)
-    for (label, value) in zip(
-        ["Pitch Area (m²)", "Area/Player (m²)", "Total Work (min)", "Total Rest (min)", "Session (min)"],
-        [f"{area:.0f}", f"{app:.1f}", f"{total_work:.0f}", f"{total_rest:.0f}", f"{total_session:.0f}"]):
-        with eval(f"k{[1,2,3,4,5][["Pitch Area (m²)", "Area/Player (m²)", "Total Work (min)", "Total Rest (min)", "Session (min)"].index(label)]}"):
-            st.markdown(f"<div class='ssg-kpi'><div class='label'>{label}</div><div class='value'>{value}</div></div>", unsafe_allow_html=True)
-
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    st.markdown("**Expected Demand (from APP)**")
-    exp = expected_demand(app)
-
-    t1, t2, t3, t4, t5, t6 = st.columns(6)
-    tags = [("TD", exp["TD"]), ("HSR", exp["HSR"]), ("Sprints", exp["SPRINT"]), ("ACC", exp["ACC"]), ("DEC", exp["DEC"]), ("PL/min", exp["PL"])]
-    for (label, val), col in zip(tags, [t1, t2, t3, t4, t5, t6]):
-        tone = "background:#E5E7EB;color:#111827;" if val == "MED" else (f"background:{DEFAULT_COLORS['over']};color:{DEFAULT_COLORS['over_text']};" if val == "HIGH" else f"background:#DBEAFE;color:#1E40AF;")
+    labels = ["Pitch Area (m²)", "Area/Player (m²)", "Total Work (min)", "Total Rest (min)", "Session (min)"]
+    values = [f"{area:.0f}", f"{app:.1f}", f"{total_work:.0f}", f"{total_rest:.0f}", f"{total_session:.0f}"]
+    for col, label, value in zip([k1, k2, k3, k4, k5], labels, values):
         with col:
-            st.markdown(f"<div class='ssg-pill'><span class='l'>{label}</span><span class='r' style='{tone}'>{val or ''}</span></div>", unsafe_allow_html=True)
-
-    st.caption("APP guide: Small <85 → high ACC/DEC & PL · Medium 85–120 → balanced · Large >120 → more HSR & sprints")
-    summary = f"{format_} | {length}×{width}m | {players} players | {sets}×{work}′ work / {rest}s rest | APP {app:.0f} m² | Expected: TD {exp['TD']} · HSR {exp['HSR']} · ACC {exp['ACC']}"
-    st.text_area("Copy summary", summary, height=80)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------- QUICK %MDP ----------
-with quick_tab:
-    st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
-    st.subheader("Quick % of Match (single player / block)")
-
-    left, right = st.columns(2)
-    with left:
-        st.markdown("**Match MDP — per minute**")
-        mdp_td = st.number_input("TD/min (m)", value=180.0)
-        mdp_hmld = st.number_input("HMLD/min (m)", value=30.0)
-        mdp_acc = st.number_input("ACC/min (count)", value=0.9)
-        mdp_dec = st.number_input("DEC/min (count)", value=0.8)
-        mdp_hsr = st.number_input("HSR/min (m)", value=3.5)
-        mdp_pl = st.number_input("PlayerLoad/min", value=12.0)
-    with right:
-        st.markdown("**SSG Block — per minute**")
-        ssg_td = st.number_input("TD/min (m) ", value=165.0)
-        ssg_hmld = st.number_input("HMLD/min (m) ", value=28.0)
-        ssg_acc = st.number_input("ACC/min (count) ", value=1.1)
-        ssg_dec = st.number_input("DEC/min (count) ", value=1.0)
-        ssg_hsr = st.number_input("HSR/min (m) ", value=1.8)
-        ssg_pl = st.number_input("PlayerLoad/min ", value=13.0)
-
-    def pct(num, den):
-        try:
-            return num / den if den else None
-        except Exception:
-            return None
-
-    metrics = [
-        ("TD", pct(ssg_td, mdp_td)), ("HMLD", pct(ssg_hmld, mdp_hmld)), ("ACC", pct(ssg_acc, mdp_acc)),
-        ("DEC", pct(ssg_dec, mdp_dec)), ("HSR", pct(ssg_hsr, mdp_hsr)), ("PL", pct(ssg_pl, mdp_pl))
-    ]
-
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    for (label, val), col in zip(metrics, [c1, c2, c3, c4, c5, c6]):
-        style = style_for_pct(val, colors)
-        with col:
-            st.markdown(f"<div class='ssg-chip ssg-shadow' style='{style}'><div class='t'>{label} %MDP</div><div class='v'>{fmt_pct(val)}</div></div>", unsafe_allow_html=True)
-            prog = 0 if val is None else max(0, min(1.2, val))
-            st.progress(min(1.0, prog))
-
-    st.caption("Legend: Under <80% · On-Target 80–100% · Over >100%")
-    st.markdown("</div>", unsafe_allow_html=True)
