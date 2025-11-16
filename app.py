@@ -232,8 +232,8 @@ with planner_tab:
     st.subheader("🏟️ Pitch Visualization")
 
     fig_ratio = (width / length) if length else 1.0
-    fig_w = 3.5
-    fig_h = max(2.0, fig_w * fig_ratio)
+    fig_w = 2.5
+    fig_h = max(1.4, fig_w * fig_ratio)
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
