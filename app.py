@@ -2,9 +2,6 @@
 # -------------------------------------------------------------
 # SSG vs Match Demand — Simple Coach Tool (Streamlit)
 # Design-focused edition + Catapult Logo + Green Pitch Visualization
-# Tabs:
-# 1) Planner → APP + Expected Demand (pills) + Pitch viz
-# 2) Quick %MDP → % of match with colored chips + progress bars
 # -------------------------------------------------------------
 
 import matplotlib.pyplot as plt
@@ -18,10 +15,10 @@ from datetime import date
 # --------------------------- Page Setup ---------------------------
 st.set_page_config(page_title="SSG vs Match Demand", page_icon="⚽", layout="wide")
 
-# Display Catapult logo at the top (make sure this file is in your repo)
+# Display Catapult logo (make sure PNG exists in repo)
 st.image("CAT_horizontal_logo_lockup_white.png", width=180)
 
-# Global CSS (clean cards, pills, chips)
+# --------------------------- Global CSS ---------------------------
 st.markdown(
     """
     <style>
@@ -53,31 +50,23 @@ DEFAULT_COLORS = {
 }
 
 def style_for_pct(v: Optional[float], colors: dict) -> str:
-    if v is None:
-        return "background:#f4f4f5;color:#6b7280;"
-    if v < 0.8:
-        return f"background:{colors['under']};color:{colors['under_text']};"
-    if v <= 1.0:
-        return f"background:{colors['on']};color:{colors['on_text']};"
+    if v is None: return "background:#f4f4f5;color:#6b7280;"
+    if v < 0.8: return f"background:{colors['under']};color:{colors['under_text']};"
+    if v <= 1.0: return f"background:{colors['on']};color:{colors['on_text']};"
     return f"background:{colors['over']};color:{colors['over_text']};"
 
-# --------------------------- Business Logic ---------------------------
-
+# --------------------------- Logic ---------------------------
 def fmt_pct(v: Optional[float]) -> str:
-    if v is None:
-        return "-"
-    try:
-        return f"{v * 100:.0f}%"
-    except Exception:
-        return "-"
+    if v is None: return "-"
+    try: return f"{v * 100:.0f}%"
+    except: return "-"
 
 def expected_demand(app: Optional[float]) -> Dict[str, str]:
-    if not app:
-        return {k: "" for k in ["TD", "HSR", "SPRINT", "ACC", "DEC", "PL"]}
+    if not app: return {k: "" for k in ["TD","HSR","SPRINT","ACC","DEC","PL"]}
     small = app < 85
     medium = 85 <= app <= 120
     return {
-        "TD": "MED" if (small or medium) else "HIGH",
+        "TD": "MED" if small or medium else "HIGH",
         "HSR": "LOW" if small else ("MED" if medium else "HIGH"),
         "SPRINT": "LOW" if small else ("MED" if medium else "HIGH"),
         "ACC": "HIGH" if small else ("MED" if medium else "LOW"),
@@ -97,9 +86,10 @@ with st.sidebar:
         accent = st.color_picker("Accent", "#111827")
 
     colors = {
-        "under": under, "under_text": DEFAULT_COLORS["under_text"],
-        "on": on, "on_text": DEFAULT_COLORS["on_text"],
-        "over": over, "over_text": DEFAULT_COLORS["over_text"],
+        "under": under, "on": on, "over": over,
+        "under_text": DEFAULT_COLORS["under_text"],
+        "on_text": DEFAULT_COLORS["on_text"],
+        "over_text": DEFAULT_COLORS["over_text"],
         "accent": accent,
     }
 
@@ -107,231 +97,8 @@ with st.sidebar:
 st.markdown(
     f"""
 <div class='ssg-card ssg-shadow' style='margin-top:10px;'>
-  <div style='font-size:28px;font-weight:800;color:{colors['accent']}'>SSG vs Match Demand</div>
-  <div style='color:#6b7280;margin-top:4px'>
-    Plan SSGs, estimate expected demand, and compare against match peaks.
+  <div style='font-size:28px;font-weight:800;color:{colors['accent']}'>
+    SSG vs Match Demand
   </div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-
-# --------------------------- Tabs ---------------------------
-planner_tab, quick_tab = st.tabs(["🗺️ Planner", "⚡ Quick %MDP"])
-
-# ========================== PLANNER TAB ==========================
-with planner_tab:
-    st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
-    st.subheader("Planner")
-
-    # ---- Inputs ----
-    colA, colB, colC = st.columns(3)
-    with colA:
-        _date = st.date_input("Date", value=date.today())
-        format_ = st.selectbox("Format", ["4v4", "6v6", "7v7", "8v8", "10v10"], index=0)
-        players = st.number_input("Players on Pitch (exclude GK)", min_value=2, max_value=22, value=8)
-    with colB:
-        length = st.number_input("Pitch Length (m)", min_value=10, max_value=120, value=30)
-        width = st.number_input("Pitch Width (m)", min_value=10, max_value=90, value=40)
-        sets = st.number_input("Sets", min_value=1, max_value=12, value=3)
-    with colC:
-        work = st.number_input("Work per Set (min)", min_value=1, max_value=30, value=3)
-        rest = st.number_input("Rest between Sets (sec)", min_value=15, max_value=300, value=90)
-
-    # ---- Calculations ----
-    area = length * width
-    app = (area / players) if players else 0
-    total_work = sets * work
-    total_rest = (sets * rest) / 60
-    total_session = total_work + total_rest
-
-    # ---- KPI Cards ----
-    k1, k2, k3, k4, k5 = st.columns(5)
-    labels = ["Pitch Area (m²)", "Area/Player (m²)", "Total Work (min)", "Total Rest (min)", "Session (min)"]
-    values = [f"{area:.0f}", f"{app:.1f}", f"{total_work:.0f}", f"{total_rest:.0f}", f"{total_session:.0f}"]
-    for col, label, value in zip([k1, k2, k3, k4, k5], labels, values):
-        with col:
-            st.markdown(
-                f"<div class='ssg-kpi'><div class='label'>{label}</div><div class='value'>{value}</div></div>",
-                unsafe_allow_html=True,
-            )
-
-    # ---- Expected Demand ----
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    st.markdown("**Expected Demand (from APP)**")
-    exp = expected_demand(app)
-
-    t1, t2, t3, t4, t5, t6 = st.columns(6)
-    tags = [
-        ("TD", exp["TD"]),
-        ("HSR", exp["HSR"]),
-        ("Sprints", exp["SPRINT"]),
-        ("ACC", exp["ACC"]),
-        ("DEC", exp["DEC"]),
-        ("PL/min", exp["PL"]),
-    ]
-    for (label, val), col in zip(tags, [t1, t2, t3, t4, t5, t6]):
-        tone = (
-            "background:#E5E7EB;color:#111827;" if val == "MED"
-            else (f"background:{DEFAULT_COLORS['over']};color:{DEFAULT_COLORS['over_text']};"
-                  if val == "HIGH"
-                  else f"background:#DBEAFE;color:#1E40AF;")
-        )
-        with col:
-            st.markdown(
-                f"<div class='ssg-pill'><span class='l'>{label}</span>"
-                f"<span class='r' style='{tone}'>{val or ''}</span></div>",
-                unsafe_allow_html=True,
-            )
-
-    st.caption("APP guide: Small <85 → high ACC/DEC & PL · Medium 85–120 → balanced · Large >120 → more HSR & sprints")
-
-    # ---- Session Summary ----
-    summary = (
-        f"{format_} | {length}×{width}m | {players} players | "
-        f"{sets}×{work}′ work / {rest}s rest | APP {app:.0f} m² | "
-        f"Expected: TD {exp['TD']} · HSR {exp['HSR']} · ACC {exp['ACC']}"
-    )
-    st.text_area("Copy summary", summary, height=80)
-
-# ---- Pitch Visualization (smaller green pitch) ----
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.subheader("🏟️ Pitch Visualization")
-
- # Smaller figure size
-fig_ratio = (width / length) if length else 1
-fig_w = 3.5          # was 5
-fig_h = max(2.2, fig_w * fig_ratio)  # was 3
-
-fig, ax = plt.subplots(figsize=(fig_w, fig_h))
-
-    # ====== Pitch constants ======
-    pen_depth = 16.5
-    pen_width = 40.32
-    goal_depth = 5.5
-    goal_width = 18.32
-    spot_dist = 11
-    center_circle_r = 9.15
-    corner_r = 1.0
-
-    # ====== Green pitch background ======
-    ax.add_patch(
-        Rectangle(
-            (0, 0),
-            length,
-            width,
-            facecolor="#059669",   # green pitch
-            edgecolor="#ffffff",   # white outline
-            lw=2,
-        )
-    )
-
-    # Halfway line
-    ax.plot([length / 2, length / 2], [0, width], color="#ffffff", lw=1.5)
-
-    # Center circle + spot
-    cc_r = min(center_circle_r, length / 3, width / 3)
-    ax.add_patch(Circle((length / 2, width / 2), cc_r, fill=False, lw=1.2, color="#ffffff"))
-    ax.scatter(length / 2, width / 2, s=12, color="#ffffff")
-
-    # Penalty & 6-yard areas
-    effective_pen_width = min(pen_width, width * 0.9)
-    effective_goal_width = min(goal_width, width * 0.6)
-    pen_y0 = (width - effective_pen_width) / 2
-    goal_y0 = (width - effective_goal_width) / 2
-
-    ax.add_patch(Rectangle((0, pen_y0), pen_depth, effective_pen_width, fill=False, lw=1.2, edgecolor="#ffffff"))
-    ax.add_patch(Rectangle((length - pen_depth, pen_y0), pen_depth, effective_pen_width, fill=False, lw=1.2, edgecolor="#ffffff"))
-
-    ax.add_patch(Rectangle((0, goal_y0), goal_depth, effective_goal_width, fill=False, lw=1, edgecolor="#ffffff"))
-    ax.add_patch(Rectangle((length - goal_depth, goal_y0), goal_depth, effective_goal_width, fill=False, lw=1, edgecolor="#ffffff"))
-
-    # Penalty spots
-    ax.scatter(spot_dist, width / 2, s=20, color="#ffffff")
-    ax.scatter(length - spot_dist, width / 2, s=20, color="#ffffff")
-
-    # Corner arcs
-    for (cx, cy) in [(0, 0), (0, width), (length, 0), (length, width)]:
-        ax.add_patch(Arc((cx, cy), 2 * corner_r, 2 * corner_r, angle=0, theta1=0, theta2=90, lw=0.8, color="#ffffff"))
-
-    # ===== Players =====
-    n_players = int(players)
-    if n_players >= 1:
-        per_row = min(6, max(2, int(np.ceil(n_players / 2))))
-        rows = int(np.ceil(n_players / per_row))
-        xs = np.linspace(length * 0.1, length * 0.9, per_row)
-        ys = np.linspace(width * 0.2, width * 0.8, rows)
-        pts = np.array([(x, y) for y in ys for x in xs])[:n_players]
-
-        half = n_players // 2
-        ax.scatter(pts[:half, 0], pts[:half, 1], s=160, color="#111827")
-        ax.scatter(pts[half:, 0], pts[half:, 1], s=160, color="#FF8A00")
-
-        for i, (x, y) in enumerate(pts, start=1):
-            ax.text(x, y, str(i), color="white", ha="center", va="center", fontsize=8, weight="bold")
-
-    # Final layout
-    ax.set_xlim(0, length)
-    ax.set_ylim(0, width)
-    ax.set_aspect("equal")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_title(f"{length}m × {width}m · {players} players · APP {app:.0f}", fontsize=12)
-
-    st.pyplot(fig)
-    st.caption("Smaller green match-style pitch with minimal clean lines.")
-
-    st.markdown("</div>", unsafe_allow_html=True)  # close card
-
-# ========================== QUICK %MDP TAB ==========================
-with quick_tab:
-    st.markdown("<div class='ssg-card ssg-shadow'>", unsafe_allow_html=True)
-    st.subheader("Quick % of Match (single player / block)")
-
-    left, right = st.columns(2)
-    with left:
-        st.markdown("**Match MDP — per minute**")
-        mdp_td = st.number_input("TD/min (m)", value=180.0)
-        mdp_hmld = st.number_input("HMLD/min (m)", value=30.0)
-        mdp_acc = st.number_input("ACC/min (count)", value=0.9)
-        mdp_dec = st.number_input("DEC/min (count)", value=0.8)
-        mdp_hsr = st.number_input("HSR/min (m)", value=3.5)
-        mdp_pl = st.number_input("PlayerLoad/min", value=12.0)
-    with right:
-        st.markdown("**SSG Block — per minute**")
-        ssg_td = st.number_input("TD/min (m) ", value=165.0)
-        ssg_hmld = st.number_input("HMLD/min (m) ", value=28.0)
-        ssg_acc = st.number_input("ACC/min (count) ", value=1.1)
-        ssg_dec = st.number_input("DEC/min (count) ", value=1.0)
-        ssg_hsr = st.number_input("HSR/min (m) ", value=1.8)
-        ssg_pl = st.number_input("PlayerLoad/min ", value=13.0)
-
-    def pct(num, den):
-        try:
-            return num / den if den else None
-        except Exception:
-            return None
-
-    metrics = [
-        ("TD", pct(ssg_td, mdp_td)),
-        ("HMLD", pct(ssg_hmld, mdp_hmld)),
-        ("ACC", pct(ssg_acc, mdp_acc)),
-        ("DEC", pct(ssg_dec, mdp_dec)),
-        ("HSR", pct(ssg_hsr, mdp_hsr)),
-        ("PL", pct(ssg_pl, mdp_pl)),
-    ]
-
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    for (label, val), col in zip(metrics, [c1, c2, c3, c4, c5, c6]):
-        style = style_for_pct(val, colors)
-        with col:
-            st.markdown(
-                f"<div class='ssg-chip ssg-shadow' style='{style}'>"
-                f"<div class='t'>{label} %MDP</div><div class='v'>{fmt_pct(val)}</div></div>",
-                unsafe_allow_html=True,
-            )
-            prog = 0 if val is None else max(0, min(1.2, val))
-            st.progress(min(1.0, prog))
-
-    st.caption("Legend: Under <80% · On-Target 80–100% · Over >100%")
-    st.markdown("</div>", unsafe_allow_html=True)
+  <div style='color:#6b7280;margin-top:4px'>
+    Plan
