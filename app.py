@@ -198,12 +198,12 @@ with planner_tab:
     st.markdown("<hr>", unsafe_allow_html=True)
     st.subheader("🏟️ Pitch Visualization")
 
-    # Figure proportions
-    fig_ratio = (width / length) if length else 1
-    fig_w = 8
-    fig_h = max(4, fig_w * fig_ratio)
+   # Figure proportions
+fig_ratio = (width / length) if length else 1
+fig_w = 8
+fig_h = max(4, fig_w * fig_ratio)
 
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     # ====== Pitch constants ======
     pen_depth = 16.5
