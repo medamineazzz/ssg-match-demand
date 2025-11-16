@@ -198,12 +198,12 @@ with planner_tab:
     st.markdown("<hr>", unsafe_allow_html=True)
     st.subheader("🏟️ Pitch Visualization")
 
-    # Smaller figure size
-    fig_ratio = (width / length) if length else 1
-    fig_w = 5
-    fig_h = max(3, fig_w * fig_ratio)
+ # Smaller figure size
+fig_ratio = (width / length) if length else 1
+fig_w = 3.5          # was 5
+fig_h = max(2.2, fig_w * fig_ratio)  # was 3
 
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     # ====== Pitch constants ======
     pen_depth = 16.5
