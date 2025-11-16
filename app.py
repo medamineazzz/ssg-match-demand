@@ -194,7 +194,7 @@ with planner_tab:
     )
     st.text_area("Copy summary", summary, height=80)
 
-    # ---- Pitch Visualization (smaller green pitch) ----
+# ---- Pitch Visualization (smaller green pitch) ----
     st.markdown("<hr>", unsafe_allow_html=True)
     st.subheader("🏟️ Pitch Visualization")
 
