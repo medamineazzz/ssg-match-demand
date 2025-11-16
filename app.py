@@ -8,7 +8,7 @@
 # -------------------------------------------------------------
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Circle
+from matplotlib.patches import Rectangle, Circle, Arc
 import numpy as np
 
 from typing import Optional, Dict
@@ -196,31 +196,78 @@ with planner_tab:
 
     # ---- Pitch Visualization ----
     st.markdown("<hr>", unsafe_allow_html=True)
-    st.subheader("📏 Pitch Visualization")
+    st.subheader("🏟️ Pitch Visualization (real field markings)")
 
-    # Figure proportions (avoid division by zero)
+    # Figure proportions
     fig_ratio = (width / length) if length else 1
     fig_w = 8
     fig_h = max(4, fig_w * fig_ratio)
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    # Outer pitch
-    ax.add_patch(Rectangle((0, 0), length, width, fill=False, lw=2, color="#111827"))
+    # ====== Pitch constants ======
+    pen_depth = 16.5
+    pen_width = 40.32
+    goal_depth = 5.5
+    goal_width = 18.32
+    spot_dist = 11
+    center_circle_r = 9.15
+    corner_r = 1.0
 
-    # Halfway line
+    # ====== Outer frame ======
+    ax.add_patch(Rectangle((0, 0), length, width, fill=False, lw=2, color="#111827"))
     ax.plot([length / 2, length / 2], [0, width], color="#9ca3af", linestyle="--", lw=1)
 
-    # 5m grid
+    # ====== Center circle ======
+    cc_r = min(center_circle_r, length / 3, width / 3)
+    ax.add_patch(Circle((length / 2, width / 2), cc_r, fill=False, lw=1, color="#9ca3af"))
+    ax.scatter(length / 2, width / 2, s=15, color="#9ca3af")
+
+    # ====== Penalty + 6-yard areas ======
+    effective_pen_width = min(pen_width, width * 0.9)
+    effective_goal_width = min(goal_width, width * 0.6)
+    pen_y0 = (width - effective_pen_width) / 2
+    goal_y0 = (width - effective_goal_width) / 2
+
+    # Penalty areas
+    ax.add_patch(Rectangle((0, pen_y0), pen_depth, effective_pen_width, fill=False, lw=1.5, color="#111827"))
+    ax.add_patch(Rectangle((length - pen_depth, pen_y0), pen_depth, effective_pen_width, fill=False, lw=1.5, color="#111827"))
+
+    # 6-yard areas
+    ax.add_patch(Rectangle((0, goal_y0), goal_depth, effective_goal_width, fill=False, lw=1.3, color="#111827"))
+    ax.add_patch(Rectangle((length - goal_depth, goal_y0), goal_depth, effective_goal_width, fill=False, lw=1.3, color="#111827"))
+
+    # Penalty spots
+    ax.scatter(spot_dist, width / 2, s=20, color="#111827")
+    ax.scatter(length - spot_dist, width / 2, s=20, color="#111827")
+
+    # Penalty arcs
+    arc_r = min(center_circle_r, length / 3, width / 3)
+    ax.add_patch(
+        Arc((spot_dist, width / 2), 2 * arc_r, 2 * arc_r, angle=0, theta1=310, theta2=50, lw=1, color="#9ca3af")
+    )
+    ax.add_patch(
+        Arc((length - spot_dist, width / 2), 2 * arc_r, 2 * arc_r, angle=180, theta1=310, theta2=50, lw=1, color="#9ca3af")
+    )
+
+    # Goals
+    goal_post_y0 = width / 2 - effective_goal_width / 2
+    ax.add_patch(Rectangle((-1.5, goal_post_y0), 1.5, effective_goal_width, fill=False, lw=1, color="#111827"))
+    ax.add_patch(Rectangle((length, goal_post_y0), 1.5, effective_goal_width, fill=False, lw=1, color="#111827"))
+
+    # Corner arcs
+    for (cx, cy) in [(0, 0), (0, width), (length, 0), (length, width)]:
+        ax.add_patch(
+            Arc((cx, cy), 2 * corner_r, 2 * corner_r, angle=0, theta1=0, theta2=90, lw=0.7, color="#9ca3af")
+        )
+
+    # 5m grid (background)
     for x in range(5, int(length), 5):
         ax.plot([x, x], [0, width], color="#e5e7eb", lw=0.5)
     for y in range(5, int(width), 5):
         ax.plot([0, length], [y, y], color="#e5e7eb", lw=0.5)
 
-    # Center circle (5 m radius)
-    ax.add_patch(Circle((length / 2, width / 2), 5, fill=False, lw=1, color="#9ca3af"))
-
-    # Players (auto layout, numbered)
+    # ====== Players (auto layout, numbered) ======
     n_players = int(players)
     if n_players >= 2:
         per_row = min(6, max(2, int(np.ceil(n_players / 2))))
@@ -234,23 +281,20 @@ with planner_tab:
         ax.scatter(pts[half:, 0], pts[half:, 1], s=200, color="#FF8A00", label="Team B", zorder=3)
 
         for i, (x, y) in enumerate(pts, start=1):
-            ax.text(x, y, str(i), color="white", ha="center", va="center", fontsize=9, weight="bold")
+            ax.text(x, y, str(i), color="white", fontsize=9, weight="bold", ha="center", va="center")
 
         ax.legend(loc="upper right", fontsize=8, frameon=False)
 
+    # ====== Final layout ======
     ax.set_xlim(0, length)
     ax.set_ylim(0, width)
     ax.set_aspect("equal")
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title(
-        f"{int(length)}m × {int(width)}m | {n_players} players | APP: {app:.0f} m²/player",
-        fontsize=12,
-        pad=12,
-    )
+    ax.set_title(f"{length}m × {width}m | {players} players | APP: {app:.0f}", fontsize=12)
 
     st.pyplot(fig)
-    st.caption("Pitch drawn to scale with 5 m grid. Players are auto-placed and numbered.")
+    st.caption("Real football pitch markings scaled to your SSG shape. Players are auto-placed.")
 
     st.markdown("</div>", unsafe_allow_html=True)  # close card
 
