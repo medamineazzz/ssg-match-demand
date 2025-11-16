@@ -219,7 +219,7 @@ with planner_tab:
 
     st.caption("APP guide: Small <85 → higher ACC/DEC & PL · Medium 85–120 → balanced · Large >120 → more HSR & sprints")
 
-    # ---- Session Summary ----
+# ---- Session Summary ----
     summary = (
         f"{format_} | {length}×{width}m | {players} players | "
         f"{sets}×{work}′ work / {rest}s rest | APP {app:.0f} m² | "
@@ -227,166 +227,97 @@ with planner_tab:
     )
     st.text_area("Copy summary", summary, height=70)
 
-    # ---- Pitch Visualization (small green pitch) ----
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.subheader("🏟️ Pitch Visualization")
+# ---- Pitch Visualization (compact & Catapult-styled) ----
+st.markdown("<hr>", unsafe_allow_html=True)
+st.subheader("🏟️ Pitch Visualization")
 
-    fig_ratio = (width / length) if length else 1.0
-    fig_w = 2.5
-    fig_h = max(1.4, fig_w * fig_ratio)
+# Ultra-compact figure size
+fig_ratio = (width / length) if length else 1.0
+fig_w = 1.8
+fig_h = max(1.0, fig_w * fig_ratio)
 
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    # Pitch constants (approximate full-size ref, scaled to user dims)
-    pen_depth = 16.5
-    pen_width = 40.32
-    goal_depth = 5.5
-    goal_width = 18.32
-    spot_dist = 11
-    center_circle_r = 9.15
-    corner_r = 1.0
+# Pitch constants
+pen_depth = 16.5
+pen_width = 40.32
+goal_depth = 5.5
+goal_width = 18.32
+spot_dist = 11
+center_circle_r = 9.15
 
-    # Green background
-    ax.add_patch(
-        Rectangle(
-            (0, 0),
-            length,
-            width,
-            facecolor="#059669",
-            edgecolor="#ffffff",
-            lw=2,
-        )
+# Dark green pitch
+ax.add_patch(
+    Rectangle(
+        (0, 0),
+        length,
+        width,
+        facecolor="#065f46",     # dark green
+        edgecolor="#d1d5db",      # soft white/gray outline
+        lw=1,
     )
+)
 
-    # Halfway line
-    ax.plot(
-        [length / 2, length / 2],
-        [0, width],
-        color="#ffffff",
-        lw=1.5,
+# Halfway line
+ax.plot(
+    [length / 2, length / 2],
+    [0, width],
+    color="#e5e7eb",
+    lw=0.8,
+)
+
+# Center circle + spot
+cc_r = min(center_circle_r, length / 3, width / 3)
+ax.add_patch(
+    Circle(
+        (length / 2, width / 2),
+        cc_r,
+        fill=False,
+        lw=0.7,
+        color="#e5e7eb",
     )
+)
+ax.scatter(length / 2, width / 2, s=8, color="#e5e7eb")
 
-    # Center circle + spot
-    cc_r = min(center_circle_r, length / 3, width / 3)
-    ax.add_patch(
-        Circle(
-            (length / 2, width / 2),
-            cc_r,
-            fill=False,
-            lw=1.2,
-            color="#ffffff",
-        )
-    )
-    ax.scatter(length / 2, width / 2, s=12, color="#ffffff")
+# Players — very small, UI-friendly
+n = int(players)
+if n >= 1:
+    per_row = min(6, max(2, int(np.ceil(n / 2))))
+    rows = int(np.ceil(n / per_row))
+    xs = np.linspace(length * 0.1, length * 0.9, per_row)
+    ys = np.linspace(width * 0.25, width * 0.75, rows)
+    pts = np.array([(x, y) for y in ys for x in xs])[:n]
 
-    # Penalty + 6-yard areas (scaled within pitch)
-    effective_pen_width = min(pen_width, width * 0.9)
-    effective_goal_width = min(goal_width, width * 0.6)
-    pen_y0 = (width - effective_pen_width) / 2
-    goal_y0 = (width - effective_goal_width) / 2
+    half = n // 2
+    ax.scatter(pts[:half, 0], pts[:half, 1], s=90, color="#1f2937")    # Team A dark grey
+    ax.scatter(pts[half:, 0], pts[half:, 1], s=90, color="#f97316")    # Catapult orange
 
-    ax.add_patch(
-        Rectangle(
-            (0, pen_y0),
-            pen_depth,
-            effective_pen_width,
-            fill=False,
-            lw=1.2,
-            edgecolor="#ffffff",
-        )
-    )
-    ax.add_patch(
-        Rectangle(
-            (length - pen_depth, pen_y0),
-            pen_depth,
-            effective_pen_width,
-            fill=False,
-            lw=1.2,
-            edgecolor="#ffffff",
-        )
-    )
-
-    ax.add_patch(
-        Rectangle(
-            (0, goal_y0),
-            goal_depth,
-            effective_goal_width,
-            fill=False,
-            lw=1.0,
-            edgecolor="#ffffff",
-        )
-    )
-    ax.add_patch(
-        Rectangle(
-            (length - goal_depth, goal_y0),
-            goal_depth,
-            effective_goal_width,
-            fill=False,
-            lw=1.0,
-            edgecolor="#ffffff",
-        )
-    )
-
-    # Penalty spots
-    ax.scatter(spot_dist, width / 2, s=20, color="#ffffff")
-    ax.scatter(length - spot_dist, width / 2, s=20, color="#ffffff")
-
-    # Corner arcs
-    for (cx, cy) in [(0, 0), (0, width), (length, 0), (length, width)]:
-        ax.add_patch(
-            Arc(
-                (cx, cy),
-                2 * corner_r,
-                2 * corner_r,
-                angle=0,
-                theta1=0,
-                theta2=90,
-                lw=0.8,
-                color="#ffffff",
-            )
+    for i, (x, y) in enumerate(pts, start=1):
+        ax.text(
+            x, y, str(i),
+            color="white",
+            fontsize=6,
+            ha="center",
+            va="center",
+            weight="bold"
         )
 
-    # Players auto-layout
-    n_players = int(players)
-    if n_players >= 1:
-        per_row = min(6, max(2, int(np.ceil(n_players / 2))))
-        rows = int(np.ceil(n_players / per_row))
-        xs = np.linspace(length * 0.1, length * 0.9, per_row)
-        ys = np.linspace(width * 0.2, width * 0.8, rows)
-        pts = np.array([(x, y) for y in ys for x in xs])[:n_players]
+# Final layout
+ax.set_xlim(0, length)
+ax.set_ylim(0, width)
+ax.set_aspect("equal")
+ax.set_xticks([])
+ax.set_yticks([])
 
-        half = n_players // 2
-        ax.scatter(pts[:half, 0], pts[:half, 1], s=140, color="#0F172A")
-        ax.scatter(pts[half:, 0], pts[half:, 1], s=140, color="#F97316")
+ax.set_title(
+    f"{length}m × {width}m — {players} players — APP {app:.0f}",
+    fontsize=8,
+    color="#d1d5db",
+    pad=2,
+)
 
-        for i, (x, y) in enumerate(pts, start=1):
-            ax.text(
-                x,
-                y,
-                str(i),
-                color="white",
-                fontsize=8,
-                ha="center",
-                va="center",
-                weight="bold",
-            )
-
-    # Final layout
-    ax.set_xlim(0, length)
-    ax.set_ylim(0, width)
-    ax.set_aspect("equal")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_title(
-        f"{length}m × {width}m · {players} players · APP {app:.0f}",
-        fontsize=11,
-        color="#E5E7EB",
-    )
-
-    st.pyplot(fig)
-    st.caption("Smaller green match-style pitch. Players auto-distributed & numbered.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
+st.pyplot(fig)
+st.caption("Compact pitch view — scaled, dark-themed, UI-aligned."
 
 # ========================== QUICK %MDP TAB ==========================
 with quick_tab:
