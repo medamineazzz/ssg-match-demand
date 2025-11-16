@@ -1,7 +1,7 @@
 # app.py
 # -------------------------------------------------------------
 # SSG vs Match Demand — Simple Coach Tool (Streamlit)
-# Design-focused edition + Catapult Logo + Pitch Visualization
+# Design-focused edition + Catapult Logo + Green Pitch Visualization
 # Tabs:
 # 1) Planner → APP + Expected Demand (pills) + Pitch viz
 # 2) Quick %MDP → % of match with colored chips + progress bars
@@ -194,6 +194,179 @@ with planner_tab:
     )
     st.text_area("Copy summary", summary, height=80)
 
+    # ---- Pitch Visualization (green pitch) ----
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.subheader("🏟️ Pitch Visualization")
+
+    # Figure proportions
+    fig_ratio = (width / length) if length else 1
+    fig_w = 8
+    fig_h = max(4, fig_w * fig_ratio)
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    # ====== Pitch constants ======
+    pen_depth = 16.5
+    pen_width = 40.32
+    goal_depth = 5.5
+    goal_width = 18.32
+    spot_dist = 11
+    center_circle_r = 9.15
+    corner_r = 1.0
+
+    # ====== Green pitch background ======
+    ax.add_patch(
+        Rectangle(
+            (0, 0),
+            length,
+            width,
+            facecolor="#059669",   # green pitch
+            edgecolor="#ffffff",   # white outer line
+            lw=2,
+        )
+    )
+
+    # ====== Halfway line ======
+    ax.plot(
+        [length / 2, length / 2],
+        [0, width],
+        color="#ffffff",
+        linestyle="-",
+        lw=1.5,
+    )
+
+    # ====== Center circle & spot ======
+    cc_r = min(center_circle_r, length / 3, width / 3)
+    ax.add_patch(
+        Circle(
+            (length / 2, width / 2),
+            cc_r,
+            fill=False,
+            lw=1.5,
+            color="#ffffff",
+        )
+    )
+    ax.scatter(length / 2, width / 2, s=15, color="#ffffff")
+
+    # ====== Penalty + 6-yard areas ======
+    effective_pen_width = min(pen_width, width * 0.9)
+    effective_goal_width = min(goal_width, width * 0.6)
+    pen_y0 = (width - effective_pen_width) / 2
+    goal_y0 = (width - effective_goal_width) / 2
+
+    # Penalty areas (left + right)
+    ax.add_patch(
+        Rectangle(
+            (0, pen_y0),
+            pen_depth,
+            effective_pen_width,
+            fill=False,
+            lw=1.5,
+            edgecolor="#ffffff",
+        )
+    )
+    ax.add_patch(
+        Rectangle(
+            (length - pen_depth, pen_y0),
+            pen_depth,
+            effective_pen_width,
+            fill=False,
+            lw=1.5,
+            edgecolor="#ffffff",
+        )
+    )
+
+    # 6-yard areas
+    ax.add_patch(
+        Rectangle(
+            (0, goal_y0),
+            goal_depth,
+            effective_goal_width,
+            fill=False,
+            lw=1.3,
+            edgecolor="#ffffff",
+        )
+    )
+    ax.add_patch(
+        Rectangle(
+            (length - goal_depth, goal_y0),
+            goal_depth,
+            effective_goal_width,
+            fill=False,
+            lw=1.3,
+            edgecolor="#ffffff",
+        )
+    )
+
+    # Penalty spots
+    ax.scatter(spot_dist, width / 2, s=20, color="#ffffff")
+    ax.scatter(length - spot_dist, width / 2, s=20, color="#ffffff")
+
+    # Penalty arcs
+    arc_r = min(center_circle_r, length / 3, width / 3)
+    ax.add_patch(
+        Arc(
+            (spot_dist, width / 2),
+            2 * arc_r,
+            2 * arc_r,
+            angle=0,
+            theta1=310,
+            theta2=50,
+            lw=1.3,
+            color="#ffffff",
+        )
+    )
+    ax.add_patch(
+        Arc(
+            (length - spot_dist, width / 2),
+            2 * arc_r,
+            2 * arc_r,
+            angle=180,
+            theta1=310,
+            theta2=50,
+            lw=1.3,
+            color="#ffffff",
+        )
+    )
+
+    # Simple goals (outside the pitch)
+    goal_post_y0 = width / 2 - effective_goal_width / 2
+    ax.add_patch(
+        Rectangle(
+            (-1.5, goal_post_y0),
+            1.5,
+            effective_goal_width,
+            fill=False,
+            lw=1,
+            edgecolor="#ffffff",
+        )
+    )
+    ax.add_patch(
+        Rectangle(
+            (length, goal_post_y0),
+            1.5,
+            effective_goal_width,
+            fill=False,
+            lw=1,
+            edgecolor="#ffffff",
+        )
+    )
+
+    # Corner arcs
+    for (cx, cy) in [(0, 0), (0, width), (length, 0), (length, width)]:
+        ax.add_patch(
+            Arc(
+                (cx, cy),
+                2 * corner_r,
+                2 * corner_r,
+                angle=0,
+                theta1=0,
+                theta2=90,
+                lw=0.8,
+                color="#ffffff",
+            )
+        )
+
     # ====== Players (auto layout, numbered) ======
     n_players = int(players)
     if n_players >= 2:
@@ -208,7 +381,16 @@ with planner_tab:
         ax.scatter(pts[half:, 0], pts[half:, 1], s=200, color="#FF8A00", label="Team B", zorder=3)
 
         for i, (x, y) in enumerate(pts, start=1):
-            ax.text(x, y, str(i), color="white", fontsize=9, weight="bold", ha="center", va="center")
+            ax.text(
+                x,
+                y,
+                str(i),
+                color="white",
+                fontsize=9,
+                weight="bold",
+                ha="center",
+                va="center",
+            )
 
         ax.legend(loc="upper right", fontsize=8, frameon=False)
 
@@ -218,10 +400,13 @@ with planner_tab:
     ax.set_aspect("equal")
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title(f"{length}m × {width}m | {players} players | APP: {app:.0f}", fontsize=12)
+    ax.set_title(
+        f"{length}m × {width}m | {players} players | APP: {app:.0f}",
+        fontsize=12,
+    )
 
     st.pyplot(fig)
-    st.caption("Real football pitch markings scaled to your SSG shape. Players are auto-placed.")
+    st.caption("Green match-style pitch with basic lines. Players are auto-placed and numbered.")
 
     st.markdown("</div>", unsafe_allow_html=True)  # close card
 
